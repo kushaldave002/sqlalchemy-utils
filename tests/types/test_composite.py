@@ -471,3 +471,35 @@ class TestCompositeTypeWithMixedCase:
         account = session.query(Account).first()
         assert account.balance.currency == 'USD'
         assert account.balance.amount == 15
+
+
+@pytest.mark.usefixtures('postgresql_dsn')
+class TestCompositeTypeDrop:
+    @pytest.fixture
+    def connection(self, engine):
+        with engine.connect() as connection:
+            transaction = connection.begin()
+            try:
+                yield connection
+            finally:
+                transaction.rollback()
+                remove_composite_listeners()
+
+    @pytest.mark.parametrize('checkfirst', [True, False])
+    def test_drops_existing_type(self, connection, checkfirst):
+        type_ = CompositeType('drop_test_type', [sa.Column('value', sa.Integer)])
+        type_.create(connection)
+        assert connection.dialect.has_type(connection, type_.name)
+
+        type_.drop(connection, checkfirst=checkfirst)
+
+        assert not connection.dialect.has_type(connection, type_.name)
+
+    def test_missing_type_with_checkfirst(self, connection):
+        type_ = CompositeType('missing_drop_test_type', [sa.Column('value', sa.Integer)])
+        type_.drop(connection)
+
+    def test_missing_type_without_checkfirst(self, connection):
+        type_ = CompositeType('missing_drop_test_type', [sa.Column('value', sa.Integer)])
+        with pytest.raises(sa.exc.ProgrammingError):
+            type_.drop(connection, checkfirst=False)

@@ -245,7 +245,7 @@ class CompositeType(UserDefinedType, SchemaType):
             bind.execute(CreateCompositeType(self))
 
     def drop(self, bind=None, checkfirst=True):
-        if checkfirst and bind.dialect.has_type(bind, self.name, schema=self.schema):
+        if not checkfirst or bind.dialect.has_type(bind, self.name, schema=self.schema):
             bind.execute(DropCompositeType(self))
 
 
